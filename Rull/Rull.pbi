@@ -4,7 +4,7 @@
 ; File Name : Rull.pbi
 ; Module : Rull
 ; Description : 
-; Version : B0.1
+; Version : 1
 ;************************************************************************************************************************
 DeclareModule Rull
     ;-* PUBLIC VARIABLE/LIST/MAP/CONSTANTE
@@ -16,11 +16,20 @@ DeclareModule Rull
     Declare GetPxlWidth(IdRull)
     Declare GetPxlHeight(IdRull)
     Declare SetPosition(IdRull,X,Y)
+    Declare AddGrid(IdRull,Value,myData,Color.d,size.d)
+    Declare RemoveGrid(IdRull,IdGrid)
+    Declare FreeRull(IdRull)
     ;}
 EndDeclareModule
 Module Rull
     EnableExplicit
     ;-* LOCAL VARIABLE/LIST/MAP/CONSTANTE
+    Structure Grid
+        Value.i
+        myData.i
+        Color.d
+        size.d
+    EndStructure
     Structure Rull
         IdCanvas.i
         W.d
@@ -30,11 +39,14 @@ Module Rull
         Value.d
         *CallBack
         Hover.b
+        *IdHover
+        List MyGrid.Grid()
     EndStructure
     Global NewList myRull.Rull()
     #BgColor=$FFDEDEDE
     #FgColor=$FF242424
     Global UnitFont=LoadFont(#PB_Any,"Arial",6,#PB_Font_HighQuality)
+    Global ModeMove.b
     ;}
     ;-* LOCAL DECLARATION
     Declare Draw()
@@ -48,6 +60,10 @@ Module Rull
     Declare DrawTxtUnitV()
     Declare DrawLineUniV()
     Declare DrawIndexValueV()
+    Declare DrawGridH()
+    Declare IsHoverGridH(Value)
+    Declare IsHoverGridV(Value)
+    Declare DrawGridV()
     ;}
     ;-* PRIVATE PROCEDURE
     Procedure Draw()
@@ -69,9 +85,10 @@ Module Rull
     Procedure DrawUnitH()
         DrawTxtUnitH()
         DrawLineUniH()
-        If myRull()\Hover
-            DrawIndexValueH()
-        EndIf
+;         If myRull()\Hover
+;             DrawIndexValueH()
+;         EndIf
+        DrawGridH()
     EndProcedure
     Procedure DrawTxtUnitH()
         Protected N,X.d=1,Y.d=1,XT
@@ -139,7 +156,7 @@ Module Rull
             ChangeCurrentElement(myRull(),GetGadgetData(EventGadget()))
             Protected gMouseX=GetGadgetAttribute(EventGadget(),#PB_Canvas_MouseX)
             Protected gMouseY=GetGadgetAttribute(EventGadget(),#PB_Canvas_MouseY)
-            Static  MX,MY,ModeMove.b,ClicOn.b=#False
+            Static  MX,MY,ClicOn.b=#False
             Select EventType()
                 Case #PB_EventType_MouseEnter
                     \Hover=#True
@@ -155,12 +172,14 @@ Module Rull
                             MX=ConvertCoordinateX(gMouseX,0,#PB_Coordinate_Device,#PB_Coordinate_User)
                             StopVectorDrawing()
                             If ModeMove And ClicOn
-                                \Value=MX
+                                ChangeCurrentElement(myRull()\MyGrid(),myRull()\IdHover)
+                                myRull()\MyGrid()\Value=MX
                                 Draw()
+                                \Value=MX
                                 SendCallback(#False)
                                 ProcedureReturn 
                             EndIf
-                            If MX=\Value
+                            If IsHoverGridH(MX)
                                 SetGadgetAttribute(EventGadget(),#PB_Canvas_Cursor,#PB_Cursor_LeftRight)
                                 ModeMove=#True
                             Else
@@ -173,15 +192,14 @@ Module Rull
                             MY=ConvertCoordinateY(0,gMouseY,#PB_Coordinate_Device,#PB_Coordinate_User)
                             StopVectorDrawing()
                             If ModeMove And ClicOn
+                                ChangeCurrentElement(myRull()\MyGrid(),myRull()\IdHover)
+                                myRull()\MyGrid()\Value=MY
                                 \Value=MY
                                 Draw()
                                 SendCallback(#False)
                                 ProcedureReturn 
                             EndIf
-                            If ModeMove And Not ClicOn
-                                SendCallback(#True)
-                            EndIf
-                            If MY=\Value
+                            If IsHoverGridV(MY)
                                 SetGadgetAttribute(EventGadget(),#PB_Canvas_Cursor,#PB_Cursor_UpDown)
                                 ModeMove=#True
                             Else
@@ -208,16 +226,19 @@ Module Rull
         EndWith
     EndProcedure
     Procedure SendCallback(LeftUp.b)
+        Protected myData=-1
         With myRull()
-            CallFunctionFast(\CallBack,ListIndex(myRull()),\Value,LeftUp)
+            If \IdHover>-1
+                ChangeCurrentElement(myRull()\MyGrid(),\IdHover)
+                myData=\MyGrid()\myData
+            EndIf
+            CallFunctionFast(\CallBack,@myRull(),\Value,LeftUp,myData)
         EndWith
     EndProcedure
     Procedure DrawUnitV()
         DrawTxtUnitV()
         DrawLineUniV()
-        If myRull()\Hover
-            DrawIndexValueV()
-        EndIf
+        DrawGridV()
     EndProcedure
     Procedure DrawTxtUnitV()
         Protected N,X.d=1,Y.d=1,YT,XR
@@ -283,6 +304,54 @@ Module Rull
             StrokePath(0.3)
         EndWith
     EndProcedure
+    Procedure DrawGridH()
+        Protected X.d
+        With myRull()\MyGrid()
+            ForEach myRull()\MyGrid()
+                VectorSourceColor(\Color)
+                X=\Value
+                MovePathCursor(X,0,#PB_Path_Relative)
+                AddPathLine(0,GadgetHeight(myRull()\IdCanvas),#PB_Path_Relative)
+                StrokePath(\size)
+            Next
+        EndWith
+    EndProcedure
+    Procedure IsHoverGridH(Value)
+        With myRull()\MyGrid()
+            myRull()\IdHover=-1
+            ForEach myRull()\MyGrid()
+                If Value>=(\Value-(\size/2)) And Value<=(\Value+\size/2)
+                    myRull()\IdHover=@myRull()\MyGrid()
+                    ProcedureReturn #True
+                EndIf
+            Next
+            ProcedureReturn #False
+        EndWith
+    EndProcedure
+    Procedure IsHoverGridV(Value)
+        With myRull()\MyGrid()
+            myRull()\IdHover=-1
+            ForEach myRull()\MyGrid()
+                If Value>=(\Value-(\size/2)) And Value<=(\Value+\size/2)
+                    myRull()\IdHover=@myRull()\MyGrid()
+                    ProcedureReturn #True
+                EndIf
+            Next
+            ProcedureReturn #False
+        EndWith
+    EndProcedure
+    Procedure DrawGridV()
+        Protected Y.d
+        With myRull()\MyGrid()
+            ForEach myRull()\MyGrid()
+                VectorSourceColor(\Color)
+                Y=\Value
+                MovePathCursor(0,Y,#PB_Path_Relative)
+                AddPathLine(GadgetWidth(myRull()\IdCanvas),0,#PB_Path_Relative)
+                StrokePath(\size)
+            Next
+        EndWith
+    EndProcedure
     ;}
     ;-* PUBLIC PROCEDURE
     Procedure Create(mySize,*Callback,Direction.i=0)
@@ -317,13 +386,13 @@ Module Rull
                     ResizeGadget(\IdCanvas,#PB_Ignore,#PB_Ignore,W,H)
             EndSelect
             Draw()
-            ProcedureReturn ListIndex(myRull())
+            ProcedureReturn @myRull()
         EndWith
     EndProcedure
     Procedure SetZoom(IdRull,ZoomFactor.d=1)
         With myRull()
             Protected W,H
-            If SelectElement(myRull(),IdRull)=0
+            If ChangeCurrentElement(myRull(),IdRull)=0
                 MessageRequester("Rull Error","This Id "+Str(IdRull)+" does not exist")
                 ProcedureReturn 
             EndIf
@@ -349,7 +418,7 @@ Module Rull
     EndProcedure
     Procedure GetPxlWidth(IdRull)
         With myRull()
-            If SelectElement(myRull(),IdRull)=0
+            If ChangeCurrentElement(myRull(),IdRull)=0
                 MessageRequester("Rull Error","This Id "+Str(IdRull)+" does not exist")
                 ProcedureReturn 
             EndIf
@@ -358,7 +427,7 @@ Module Rull
     EndProcedure
     Procedure GetPxlHeight(IdRull)
         With myRull()
-            If SelectElement(myRull(),IdRull)=0
+            If ChangeCurrentElement(myRull(),IdRull)=0
                 MessageRequester("Rull Error","This Id "+Str(IdRull)+" does not exist")
                 ProcedureReturn 
             EndIf
@@ -367,7 +436,7 @@ Module Rull
     EndProcedure
     Procedure SetPosition(IdRull,X,Y)
         With myRull()
-            If SelectElement(myRull(),IdRull)=0
+            If ChangeCurrentElement(myRull(),IdRull)=0
                 MessageRequester("Rull Error","This Id "+Str(IdRull)+" does not exist")
                 ProcedureReturn 
             EndIf
@@ -375,14 +444,49 @@ Module Rull
             Draw()
         EndWith
     EndProcedure
+    Procedure AddGrid(IdRull,Value,myData,Color.d,size.d)
+        With myRull()
+             If ChangeCurrentElement(myRull(),IdRull)=0
+                MessageRequester("Rull Error","This Id "+Str(IdRull)+" does not exist")
+                ProcedureReturn 
+            EndIf
+            AddElement(\MyGrid())
+            \MyGrid()\Value=Value
+            \MyGrid()\myData=myData
+            \MyGrid()\Color=Color
+            \MyGrid()\size=size
+            Draw()
+            ProcedureReturn @\MyGrid()
+        EndWith
+    EndProcedure
+    Procedure RemoveGrid(IdRull,IdGrid)
+        If ChangeCurrentElement(myRull(),IdRull)=0
+            MessageRequester("Rull Error","This Id rull "+Str(IdRull)+" does not exist")
+            ProcedureReturn #False
+        EndIf
+        If ChangeCurrentElement(myRull()\MyGrid(),IdGrid)=0
+            MessageRequester("Rull Error","This Id grid "+Str(IdGrid)+" does not exist")
+            ProcedureReturn #False
+        EndIf
+        DeleteElement(myRull()\MyGrid())
+        myRull()\Hover=#False
+        myRull()\IdHover=-1
+        ModeMove=#False
+        Draw()
+        ProcedureReturn #True
+    EndProcedure
+    Procedure FreeRull(IdRull)
+        If ChangeCurrentElement(myRull(),IdRull)=0
+            MessageRequester("Rull Error","This Id rull "+Str(IdRull)+" does not exist")
+            ProcedureReturn #False
+        EndIf
+        DeleteElement(myRull())
+    EndProcedure
     ;}
 EndModule
 
-
-
-
-; IDE Options = PureBasic 5.50 beta 1 (Windows - x64)
-; CursorPosition = 381
-; FirstLine = 358
-; Folding = --------
+; IDE Options = PureBasic 5.42 LTS (Windows - x86)
+; CursorPosition = 6
+; Folding = 0GA+BQb4---
+; Markers = 162,182
 ; EnableXP
