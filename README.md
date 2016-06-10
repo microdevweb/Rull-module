@@ -31,7 +31,7 @@ Les fonctions sont les suivantes:
   * IdGrid l'adresse mémoire du taquet
 * FreeRull(IdRull) Libère la mémoire en supprimant la règle (à appelé à la fermeture de la fenêtre par exemple)
   * IdRull l'adresse mémoire de la règle
-* ClearGrid(IdRull) Efface tous les taquet de la règle
+* ClearGrid(IdRull) Efface tous les taquets de la règle
   * IdRull l'adresse mémoire de la règle
 * SetGridValue(IdRull,IdGrid,Value) modifie la valeur d'un taquet
   * IdRull l'adresse mémoire de la règle
