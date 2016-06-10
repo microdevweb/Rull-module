@@ -1,10 +1,10 @@
 # Rull-module
 
-For PureBasic Version 1
+For PureBasic 
 
 Voici un petit module que je fais pour mon usage (règle en mm)
 
-Version définitive 1
+Version  1.1
 
 Les fonctions sont les suivantes:
 
@@ -31,7 +31,12 @@ Les fonctions sont les suivantes:
   * IdGrid l'adresse mémoire du taquet
 * FreeRull(IdRull) Libère la mémoire en supprimant la règle (à appelé à la fermeture de la fenêtre par exemple)
   * IdRull l'adresse mémoire de la règle
-
+* ClearGrid(IdRull) Efface tous les taquet de la règle
+  * IdRull l'adresse mémoire de la règle
+* SetGridValue(IdRull,IdGrid,Value) modifie la valeur d'un taquet
+  * IdRull l'adresse mémoire de la règle
+  * IdGrid l'adresse mémoire du taquet
+  * Value la nouvelle valeur du taquet
 
 La procédure CallBack doit être renseignée comme ceci
 
